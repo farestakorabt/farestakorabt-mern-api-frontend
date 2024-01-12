@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import axios from "axios";
 import baseURL from "../../../utils/baseURL";
+import { resetErrorAction } from "../globalActions/globalAction";
 
 // initialize state
 const initialState = {
@@ -19,25 +20,58 @@ export const createProductAction = createAsyncThunk(
   async (payload, { rejectWithValue, getState, dispatch }) => {
     console.log(payload);
     try {
-      const { name, desciption, sizes, brand, colors, price } = payload;
+      const {
+        name,
+        description,
+        sizes,
+        brand,
+        colors,
+        price,
+        category,
+        totalQty,
+        files,
+      } = payload;
 
       // make request
 
       // token -authentication token
-      const token = getState().users?.userAuth?.userInfo?.token;
+      const token = getState()?.users?.userAuth?.userInfo?.token;
 
       const config = {
         headers: {
-          Authorazation: `Bearer + ${token}`,
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
         },
       };
+
+      // formData
+      const formData = new FormData();
+
+      formData.append("name", name);
+      formData.append("description", description);
+      formData.append("brand", brand);
+      formData.append("price", price);
+      formData.append("category", category);
+      formData.append("totalQty", totalQty);
+
+      sizes.foreach((size) => {
+        formData.append("sizes", size);
+      });
+
+      colors.foreach((color) => {
+        formData.append("colors", color);
+      });
+
+      files.foreach((file) => {
+        formData.append("files", file);
+      });
 
       // images
       const { data } = await axios.post(
         `${baseURL}/products`,
         {
           name,
-          desciption,
+          description,
           sizes,
           brand,
           colors,
@@ -45,6 +79,32 @@ export const createProductAction = createAsyncThunk(
         },
         config
       );
+
+      return data;
+    } catch (error) {
+      return rejectWithValue(error?.response?.data);
+    }
+  }
+);
+
+// fetch product action
+export const fetchProductAction = createAsyncThunk(
+  "product/list",
+  async (payload, { rejectWithValue, getState, dispatch }) => {
+    console.log(payload);
+    try {
+      // token -authentication token
+      const token = getState()?.users?.userAuth?.userInfo?.token;
+
+      const config = {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      };
+
+      // images
+      const { data } = await axios.get(`${baseURL}/products`, config);
 
       return data;
     } catch (error) {
@@ -65,8 +125,24 @@ const productSlice = createSlice({
 
     builder.addCase(createProductAction.fulfilled, (state, action) => {
       state.loading = false;
+      state.product = action.payload;
+      state.isAdded = true;
+    });
+
+    // fetch all products
+    builder.addCase(fetchProductAction.pending, (state) => {
+      state.loading = true;
+    });
+
+    builder.addCase(fetchProductAction.fulfilled, (state, action) => {
+      state.loading = false;
       state.products = action.payload;
       state.isAdded = true;
+    });
+
+    // reset success
+    builder.addCase(resetErrorAction.pending, (state, action) => {
+      state.error = null;
     });
 
     builder.addCase(createProductAction.rejected, (state, action) => {

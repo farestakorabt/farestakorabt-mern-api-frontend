@@ -22,9 +22,19 @@ export default function AddProduct() {
 
   // file handleChange
   const fileHandleChange = (event) => {
-    // Array. => create a new array from an object
     const newFiles = Array.from(event.target.files);
+    //validation
+    const newErrs = [];
+    newFiles.forEach((file) => {
+      if (file?.size > 1000000) {
+        newErrs.push(`${file?.name} is too large`);
+      }
+      if (!file?.type?.startsWith("image/")) {
+        newErrs.push(`${file?.name} is not an image`);
+      }
+    });
     setFiles(newFiles);
+    setFileErrs(newErrs);
   };
 
   // sizes
@@ -49,9 +59,8 @@ export default function AddProduct() {
   }, [dispatch]);
 
   // select categories
-  const { categories, loading, error } = useSelector(
-    (state) => state?.categories?.categories
-  );
+  const { categories } = useSelector((state) => state?.categories?.categories);
+  // console.log(categories);
 
   // brands
   useEffect(() => {
@@ -65,15 +74,15 @@ export default function AddProduct() {
 
   // colors
   const [colorsOption, setColorsOption] = useState([]);
-  console.log(colorsOption);
-
-  useEffect(() => {
-    dispatch(fetchColorsAction());
-  }, [dispatch]);
+  // console.log(colorsOption);
 
   const {
     colors: { colors },
   } = useSelector((state) => state?.colors);
+
+  useEffect(() => {
+    dispatch(fetchColorsAction());
+  }, [dispatch]);
 
   const handleColorChange = (colors) => {
     setColorsOption(colors);
@@ -88,8 +97,6 @@ export default function AddProduct() {
   });
 
   // console.log(colors);
-
-  let isAdded;
 
   //---form data---
   const [formData, setFormData] = useState({
@@ -108,37 +115,45 @@ export default function AddProduct() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // get products from store
+  const { product, isAdded, loading, error } = useSelector(
+    (state) => state?.products
+  );
+
   //onSubmit
   const handleOnSubmit = (e) => {
     e.preventDefault();
-    // console.log(colorsOption);
+    console.log(fileErrs);
     // dispatch
     dispatch(
       createProductAction({
         ...formData,
         files,
-        colors: colorsOption?.map((color) => color?.label),
+        colors: colorsOption?.map((color) => color.label),
         sizes: sizeOption?.map((size) => size?.label),
       })
     );
 
     //reset form data
-    // setFormData({
-    //   name: "",
-    //   description: "",
-    //   category: "",
-    //   sizes: "",
-    //   brand: "",
-    //   colors: "",
-    //   images: "",
-    //   price: "",
-    //   totalQty: "",
-    // });
+    setFormData({
+      name: "",
+      description: "",
+      category: "",
+      sizes: "",
+      brand: "",
+      colors: "",
+      images: "",
+      price: "",
+      totalQty: "",
+    });
   };
 
   return (
     <>
       {error && <ErrorMsg message={error?.message} />}
+      {fileErrs?.length > 0 && (
+        <ErrorMsg message="file too large or upload an image" />
+      )}
       {isAdded && <SuccessMsg message="Product Added Successfully" />}
       <div className="flex min-h-full flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -281,7 +296,7 @@ export default function AddProduct() {
                           <span>Upload files</span>
                           <input
                             name="images"
-                            value={formData.images}
+                            value={formData?.images}
                             onChange={fileHandleChange}
                             type="file"
                             multiple
@@ -304,7 +319,7 @@ export default function AddProduct() {
                 <div className="mt-1">
                   <input
                     name="price"
-                    value={formData.price}
+                    value={formData?.price}
                     onChange={handleOnChange}
                     type="number"
                     className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
@@ -320,7 +335,7 @@ export default function AddProduct() {
                 <div className="mt-1">
                   <input
                     name="totalQty"
-                    value={formData.totalQty}
+                    value={formData?.totalQty}
                     onChange={handleOnChange}
                     type="number"
                     className="block w-full appearance-none rounded-md border border-gray-300 px-3 py-2 placeholder-gray-400 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
@@ -350,6 +365,7 @@ export default function AddProduct() {
                   <LoadingComponent />
                 ) : (
                   <button
+                    disabled={fileErrs?.length > 0}
                     type="submit"
                     className="flex w-full justify-center rounded-md border border-transparent bg-indigo-600 py-2 px-4 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                   >
